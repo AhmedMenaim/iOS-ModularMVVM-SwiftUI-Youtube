@@ -8,10 +8,14 @@
 import Foundation
 import Combine
 
-class MoviesNetworkManager: ObservableObject {
-  func getMovies(currentPage: Int) -> AnyPublisher<MoviesNetworkResponse, SessionDataTaskError> {
+//protocol NetworkManagerProtocol {
+//  func perform<T: Decodable>(_ request: URLRequest) -> AnyPublisher<T, SessionDataTaskError>
+//}
+
+class NetworkManager: ObservableObject {
+  func perform<T: Decodable>(_ request: URLRequest) -> AnyPublisher<T, SessionDataTaskError> {
     guard
-      let url = URL(string: "\(Constants.Network.baseURL)discover/movie?include_adult=false&sort_by=popularity.desc&page=\(currentPage)&\(Constants.Network.APIKey)")
+      let url = request.url
     else {
       return Fail(error: SessionDataTaskError.notValidURL).eraseToAnyPublisher()
     }
@@ -43,7 +47,7 @@ class MoviesNetworkManager: ObservableObject {
               throw SessionDataTaskError.emptyErrorWithStatusCode(httpResponse.statusCode.description)
           }
         }
-        .decode(type: MoviesNetworkResponse.self, decoder: JSONDecoder())
+        .decode(type: T.self, decoder: JSONDecoder())
         .receive(on: DispatchQueue.main) // down stream
         .mapError { error -> SessionDataTaskError in
           if let error = error as? SessionDataTaskError {
@@ -53,5 +57,23 @@ class MoviesNetworkManager: ObservableObject {
         }
         .eraseToAnyPublisher()
 
+  }
+}
+
+//URL(string: "\(Constants.Network.baseURL)discover/movie?include_adult=false&sort_by=popularity.desc&page=\(currentPage)&\(Constants.Network.APIKey)")
+
+class MoviesNetworkManager: ObservableObject {
+
+  let manager = NetworkManager()
+
+  func getMovies(currentPage: Int) -> AnyPublisher<MoviesNetworkResponse, SessionDataTaskError> {
+    manager
+      .perform(
+        URLRequest(
+          url: URL(
+            string: "\(Constants.Network.baseURL)discover/movie?include_adult=false&sort_by=popularity.desc&page=\(currentPage)&\(Constants.Network.APIKey)"
+          )!
+)
+)
   }
 }
